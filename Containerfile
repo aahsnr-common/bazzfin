@@ -271,9 +271,6 @@ RUN --mount=type=cache,dst=/var/cache \
         uupd \
         ds-inhibit \
         nautilus-gsconnect \
-        steamdeck-backgrounds \
-        steamdeck-gnome-presets \
-        gnome-randr-rust \
         gnome-shell-extension-user-theme \
         gnome-shell-extension-gsconnect \
         gnome-tweaks \
@@ -287,7 +284,6 @@ RUN --mount=type=cache,dst=/var/cache \
     if [ -f /usr/lib/systemd/system/uupd.service ]; then \
         sed -i 's|uupd|& --disable-module-distrobox|' /usr/lib/systemd/system/uupd.service; \
     fi && \
-    /ctx/build-gnome-extensions && \
     systemctl enable dconf-update.service || true && \
     /ctx/cleanup
 
