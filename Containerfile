@@ -343,7 +343,6 @@ RUN --mount=type=cache,dst=/var/cache \
         sed -i 's/balanced=balanced$/balanced=balanced-bazzite/' /etc/tuned/ppd.conf && \
         sed -i 's/performance=throughput-performance$/performance=throughput-performance-bazzite/' /etc/tuned/ppd.conf; \
     fi && \
-    systemctl disable fw-fanctrl.service || true && \
     systemctl disable scx_loader.service || true && \
     systemctl enable input-remapper.service || true && \
     systemctl disable rpm-ostreed-automatic.timer || true && \
