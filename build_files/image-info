@@ -13,13 +13,15 @@ LOGO_COLOR="0;38;2;23;147;209"
 
 IMAGE_INFO="/usr/share/ublue-os/image-info.json"
 IMAGE_REF="ostree-image-signed:docker://ghcr.io/$IMAGE_VENDOR/$IMAGE_NAME"
-IMAGE_BRANCH_NORMALIZED=$IMAGE_BRANCH
+IMAGE_BRANCH_NORMALIZED=${IMAGE_BRANCH:-main}
 
 if [[ $IMAGE_BRANCH_NORMALIZED == "main" ]]; then
   IMAGE_BRANCH_NORMALIZED="stable"
 fi
 
 FEDORA_VERSION=$(rpm -E %fedora)
+VERSION_TAG="${VERSION_TAG:-$(date +%Y%m%d)}"
+VERSION_PRETTY="${VERSION_PRETTY:-${FEDORA_VERSION}.${VERSION_TAG}}"
 
 # Image Info File
 cat >$IMAGE_INFO <<EOF
