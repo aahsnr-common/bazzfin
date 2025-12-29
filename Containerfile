@@ -3,6 +3,9 @@
 ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-silverblue}"
 ARG FEDORA_VERSION="${FEDORA_VERSION:-43}"
 ARG ARCH="${ARCH:-x86_64}"
+ARG IMAGE_NAME="${IMAGE_NAME:-bazzfin}"
+ARG IMAGE_VENDOR="${IMAGE_VENDOR:-ublue-os}"
+ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
 
 ARG BASE_IMAGE="${BASE_IMAGE:-ghcr.io/ublue-os/${BASE_IMAGE_NAME}-main:${FEDORA_VERSION}}"
 ARG NVIDIA_BASE="${NVIDIA_BASE:-bazzite}"
@@ -26,6 +29,7 @@ FROM ${BASE_IMAGE} AS bazzfin
 
 ARG IMAGE_NAME="${IMAGE_NAME:-bazzfin}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-ublue-os}"
+ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
 ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-silverblue}"
 
 # Copy system files (Desktop Shared + Silverblue Specific + Nvidia Shared)
@@ -224,7 +228,7 @@ RUN --mount=type=cache,dst=/var/cache \
         gnome-shell-extension-launch-new-instance \
         gnome-shell-extension-places-menu \
         gnome-shell-extension-window-list || true && \
-    dnf5 -y install \
+    dnf5 -y install --skip-unavailable \
         libsecret \
         git-credential-libsecret \
         bazaar \
@@ -241,7 +245,7 @@ RUN --mount=type=cache,dst=/var/cache \
         libinput-utils \
         i2c-tools \
         lm_sensors \
-        fw-ectool \
+        fw-fanctrl \
         webapp-manager \
         btop \
         duf \
@@ -258,7 +262,6 @@ RUN --mount=type=cache,dst=/var/cache \
         cockpit-system \
         cockpit-files \
         cockpit-storaged \
-        topgrade \
         stress-ng \
         snapper \
         btrfs-assistant \
@@ -275,7 +278,6 @@ RUN --mount=type=cache,dst=/var/cache \
         gnome-shell-extension-user-theme \
         gnome-shell-extension-gsconnect \
         gnome-tweaks \
-        rom-properties-gtk3 \
         openssh-askpass \
         firewall-config \
         asusctl \
@@ -285,7 +287,7 @@ RUN --mount=type=cache,dst=/var/cache \
     if [ -f /usr/lib/systemd/system/uupd.service ]; then \
         sed -i 's|uupd|& --disable-module-distrobox|' /usr/lib/systemd/system/uupd.service; \
     fi && \
-    systemctl enable dconf-update.service || true && \
+    /ctx/build-gnome-extensions || true && \
     /ctx/cleanup
 
 # 6. FINAL CLEANUP & OVERRIDES
@@ -341,6 +343,7 @@ RUN --mount=type=cache,dst=/var/cache \
         sed -i 's/balanced=balanced$/balanced=balanced-bazzite/' /etc/tuned/ppd.conf && \
         sed -i 's/performance=throughput-performance$/performance=throughput-performance-bazzite/' /etc/tuned/ppd.conf; \
     fi && \
+    systemctl disable fw-fanctrl.service || true && \
     systemctl disable scx_loader.service || true && \
     systemctl enable input-remapper.service || true && \
     systemctl disable rpm-ostreed-automatic.timer || true && \
