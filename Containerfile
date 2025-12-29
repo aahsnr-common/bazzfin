@@ -42,9 +42,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     mkdir -p /var/roothome && \
-    # Ensure dnf5-plugins is installed
     dnf5 -y install dnf5-plugins && \
-    # Enable COPR repositories
     for copr in \
         ublue-os/bazzite \
         ublue-os/bazzite-multilib \
@@ -57,21 +55,15 @@ RUN --mount=type=cache,dst=/var/cache \
         dnf5 -y config-manager setopt "copr:copr.fedorainfracloud.org:${copr////:}".priority=98 || true; \
     done && \
     unset -v copr && \
-    # Install Terra repos
     dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release{,-extras,-mesa} && \
-    # Add Tailscale repo
     dnf5 -y config-manager addrepo --overwrite --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo && \
-    # Install RPM Fusion
     dnf5 -y install \
         https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
         https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm && \
-    # Enable negativo17 multimedia repo
     if [ -f /etc/yum.repos.d/negativo17-fedora-multimedia.repo ]; then \
         sed -i 's@enabled=0@enabled=1@g' /etc/yum.repos.d/negativo17-fedora-multimedia.repo; \
     fi && \
-    # Add negativo17 steam repo
     dnf5 -y config-manager addrepo --from-repofile=https://negativo17.org/repos/fedora-steam.repo && \
-    # Configure repository priorities
     dnf5 -y config-manager setopt "*bazzite*".priority=1 && \
     dnf5 -y config-manager setopt "*terra*".priority=3 "*terra*".exclude="nerd-fonts topgrade scx-tools scx-scheds steam python3-protobuf" && \
     dnf5 -y config-manager setopt "terra-mesa".enabled=true && \
@@ -79,7 +71,6 @@ RUN --mount=type=cache,dst=/var/cache \
     dnf5 -y config-manager setopt "*rpmfusion*".priority=5 "*rpmfusion*".exclude="mesa-*" && \
     dnf5 -y config-manager setopt "*fedora*".exclude="mesa-* kernel-core-* kernel-modules-* kernel-uki-virt-*" && \
     dnf5 -y config-manager setopt "*staging*".exclude="scx-tools scx-scheds kf6-* mesa* mutter*" && \
-    # Conditionally disable linux-surface if it exists (not in silverblue-main)
     if dnf5 repolist --all 2>/dev/null | grep -q "linux-surface"; then \
         dnf5 -y config-manager setopt "linux-surface".enabled=false || true; \
     fi && \
@@ -98,7 +89,6 @@ RUN --mount=type=cache,dst=/var/cache \
         scx-scheds \
         scx-tools && \
     dnf5 -y copr disable bieszczaders/kernel-cachyos-addons && \
-    # Swap packages from bazzite repo
     declare -A toswap=( \
         ["copr:copr.fedorainfracloud.org:ublue-os:bazzite"]="plymouth" \
     ) && \
@@ -108,7 +98,6 @@ RUN --mount=type=cache,dst=/var/cache \
         done; \
     done && \
     unset -v toswap repo package && \
-    # Version lock plymouth
     dnf5 versionlock add \
         plymouth \
         plymouth-scripts \
@@ -125,9 +114,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    # Remove conflicting package
     dnf5 -y remove pipewire-config-raop || true && \
-    # Swap to patched versions
     declare -A toswap=( \
         ["copr:copr.fedorainfracloud.org:ublue-os:bazzite"]="wireplumber" \
         ["copr:copr.fedorainfracloud.org:ublue-os:bazzite-multilib"]="pipewire bluez xorg-x11-server-Xwayland" \
@@ -140,7 +127,6 @@ RUN --mount=type=cache,dst=/var/cache \
         done; \
     done && \
     unset -v toswap repo package && \
-    # Version lock packages
     dnf5 versionlock add \
         pipewire \
         pipewire-alsa \
@@ -167,7 +153,6 @@ RUN --mount=type=cache,dst=/var/cache \
         mesa-vulkan-drivers \
         fwupd \
         fwupd-plugin-uefi-capsule-data && \
-    # Install additional codecs
     dnf5 -y install libfreeaptx && \
     dnf5 -y install --enable-repo="*rpmfusion*" --disable-repo="*fedora-multimedia*" \
         libaacs \
@@ -182,38 +167,37 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=bind,from=nvidia,src=/,dst=/rpms/nvidia \
-    # Clean DNF cache to prevent transaction conflicts
+    set -x && \
+    echo "=== NVIDIA Driver Installation: Starting ===" && \
     dnf5 clean all && \
-    # Remove conflicting NetworkManager packages that cause sysusers conflicts
     dnf5 -y remove --noautoremove \
         NetworkManager-openvpn \
         NetworkManager-openvpn-gnome \
         openvpn || true && \
-    # Remove any conflicting sysusers files manually
-    rm -f /usr/lib/sysusers.d/nm-openvpn-sysusers.conf /usr/lib/sysusers.d/openvpn.conf || true && \
-    # Unset skip_if_unavailable to catch errors
+    rm -f /usr/lib/sysusers.d/nm-openvpn-sysusers.conf \
+          /usr/lib/sysusers.d/openvpn.conf || true && \
+    echo "=== Step 1: Removed conflicting NetworkManager packages ===" && \
     dnf5 config-manager unsetopt skip_if_unavailable && \
-    # Remove conflicting packages
     dnf5 -y remove --noautoremove \
         nvidia-gpu-firmware \
         rocm-hip \
         rocm-opencl \
         rocm-clinfo \
         rocm-smi || true && \
-    # Enable staging repo for egl-wayland
+    echo "=== Step 2: Removed conflicting GPU packages ===" && \
     dnf5 -y copr enable ublue-os/staging && \
-    # Install Wayland dependencies for Nvidia with allowerasing to resolve conflicts
-    dnf5 -y install --allowerasing \
+    echo "=== Step 3: Enabled staging repo ===" && \
+    dnf5 -y install --best --allowerasing \
         egl-wayland.x86_64 \
         egl-wayland2.x86_64 && \
-    # Install NVIDIA drivers
+    echo "=== Step 4: Installed EGL Wayland packages ===" && \
+    echo "=== Step 5: Running /ctx/install-nvidia ===" && \
     /ctx/install-nvidia && \
-    # Clean up nouveau
+    echo "=== Step 6: NVIDIA drivers installed successfully ===" && \
     rm -f /usr/share/vulkan/icd.d/nouveau_icd.*.json && \
-    # Create symlink for nvidia-ml
     ln -sf libnvidia-ml.so.1 /usr/lib64/libnvidia-ml.so && \
-    # Disable staging repo
     dnf5 -y copr disable ublue-os/staging && \
+    echo "=== NVIDIA Driver Installation: Complete ===" && \
     /ctx/cleanup
 
 # 5. CUSTOM PACKAGE CONFIGURATION (ASUS Optimized, No Gaming Bloat)
@@ -222,7 +206,6 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=secret,id=GITHUB_TOKEN \
-    # Remove unneeded packages
     dnf5 -y remove --noautoremove \
         ublue-os-update-services \
         toolbox \
@@ -243,7 +226,6 @@ RUN --mount=type=cache,dst=/var/cache \
         gnome-shell-extension-launch-new-instance \
         gnome-shell-extension-places-menu \
         gnome-shell-extension-window-list || true && \
-    # Install requested packages
     dnf5 -y install \
         libsecret \
         git-credential-libsecret \
@@ -301,9 +283,7 @@ RUN --mount=type=cache,dst=/var/cache \
         firewall-config \
         asusctl \
         supergfxd || true && \
-    # Remove 32-bit packages
     dnf5 -y remove --setopt=clean_requirements_on_remove=1 '*i686' '*i386' || true && \
-    # Configure System Settings
     systemctl mask iscsi || true && \
     if [ -f /usr/lib/systemd/system/uupd.service ]; then \
         sed -i 's|uupd|& --disable-module-distrobox|' /usr/lib/systemd/system/uupd.service; \
@@ -319,17 +299,12 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=cache,dst=/var/log \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
-    # Remove toolbox profile
     rm -f /etc/profile.d/toolbox.sh && \
-    # Ensure /var/tmp exists with proper permissions
     mkdir -p /var/tmp && chmod 1777 /var/tmp && \
-    # Fix libdrm symlink
     cp --no-dereference --preserve=links /usr/lib64/libdrm.so.2 /usr/lib64/libdrm.so || true && \
-    # Setup Justfiles
     echo "import \"/usr/share/ublue-os/just/80-bazzite.just\"" >> /usr/share/ublue-os/justfile && \
     echo "import \"/usr/share/ublue-os/just/81-bazzite-fixes.just\"" >> /usr/share/ublue-os/justfile && \
     echo "import \"/usr/share/ublue-os/just/95-bazzite-nvidia.just\"" >> /usr/share/ublue-os/justfile && \
-    # Setup DConf for Silverblue
     mkdir -p "/usr/share/ublue-os/dconfs/desktop-silverblue/" && \
     if ls /usr/share/glib-2.0/schemas/zz0-*-bazzite-desktop-silverblue-*.gschema.override 1> /dev/null 2>&1; then \
         cp /usr/share/glib-2.0/schemas/zz0-*-bazzite-desktop-silverblue-*.gschema.override "/usr/share/ublue-os/dconfs/desktop-silverblue/" && \
@@ -337,14 +312,12 @@ RUN --mount=type=cache,dst=/var/cache \
         dconf-override-converter to-dconf "/usr/share/ublue-os/dconfs/desktop-silverblue/zz0-"*"-bazzite-desktop-silverblue-"*".gschema.override" && \
         rm "/usr/share/ublue-os/dconfs/desktop-silverblue/zz0-"*"-bazzite-desktop-silverblue-"*".gschema.override"; \
     fi && \
-    # Setup DConf for Nvidia
     mkdir -p "/usr/share/ublue-os/dconfs/nvidia-silverblue/" && \
     if ls /usr/share/glib-2.0/schemas/zz0-*-bazzite-nvidia-silverblue-*.gschema.override 1> /dev/null 2>&1; then \
         cp /usr/share/glib-2.0/schemas/zz0-*-bazzite-nvidia-silverblue-*.gschema.override "/usr/share/ublue-os/dconfs/nvidia-silverblue/" && \
         dconf-override-converter to-dconf "/usr/share/ublue-os/dconfs/nvidia-silverblue/zz0-"*"-bazzite-nvidia-silverblue-"*".gschema.override" && \
         rm "/usr/share/ublue-os/dconfs/nvidia-silverblue/zz0-"*"-bazzite-nvidia-silverblue-"*".gschema.override"; \
     fi && \
-    # Compile Schemas
     mkdir -p /tmp/bazzite-schema-test && \
     find "/usr/share/glib-2.0/schemas/" -type f ! -name "*.gschema.override" -exec cp {} "/tmp/bazzite-schema-test/" \; && \
     if ls /usr/share/glib-2.0/schemas/zz0-*.gschema.override 1> /dev/null 2>&1; then \
@@ -353,13 +326,11 @@ RUN --mount=type=cache,dst=/var/cache \
     glib-compile-schemas --strict /tmp/bazzite-schema-test && \
     glib-compile-schemas /usr/share/glib-2.0/schemas &>/dev/null || true && \
     rm -rf /tmp/bazzite-schema-test && \
-    # Disable unneeded repos (only if they exist)
     for repo in fedora-cisco-openh264 fedora-steam fedora-rar google-chrome tailscale _copr_ublue-os-akmods terra terra-extras negativo17-fedora-multimedia; do \
         if [ -f "/etc/yum.repos.d/$repo.repo" ]; then \
             sed -i 's@enabled=1@enabled=0@g' "/etc/yum.repos.d/$repo.repo"; \
         fi; \
     done && \
-    # Disable COPR repos
     for copr in \
         ublue-os/bazzite \
         ublue-os/bazzite-multilib \
@@ -369,13 +340,11 @@ RUN --mount=type=cache,dst=/var/cache \
     do \
         dnf5 -y copr disable $copr || true; \
     done && \
-    # Apply System Tuning (only if ppd.conf exists)
     if [ -f /etc/tuned/ppd.conf ]; then \
         sed -i 's/power-saver=powersave$/power-saver=powersave-bazzite/' /etc/tuned/ppd.conf && \
         sed -i 's/balanced=balanced$/balanced=balanced-bazzite/' /etc/tuned/ppd.conf && \
         sed -i 's/performance=throughput-performance$/performance=throughput-performance-bazzite/' /etc/tuned/ppd.conf; \
     fi && \
-    # Enable/Disable Services (with error handling)
     systemctl disable fw-fanctrl.service || true && \
     systemctl disable scx_loader.service || true && \
     systemctl enable input-remapper.service || true && \
