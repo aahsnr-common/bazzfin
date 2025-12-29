@@ -242,7 +242,6 @@ RUN --mount=type=cache,dst=/var/cache \
         i2c-tools \
         lm_sensors \
         fw-ectool \
-        fw-fanctrl \
         webapp-manager \
         btop \
         duf \
@@ -286,7 +285,6 @@ RUN --mount=type=cache,dst=/var/cache \
     if [ -f /usr/lib/systemd/system/uupd.service ]; then \
         sed -i 's|uupd|& --disable-module-distrobox|' /usr/lib/systemd/system/uupd.service; \
     fi && \
-    /ctx/build-gnome-extensions && \
     systemctl enable dconf-update.service || true && \
     /ctx/cleanup
 
