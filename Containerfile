@@ -182,17 +182,28 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=bind,from=nvidia,src=/,dst=/rpms/nvidia \
+    # Clean DNF cache to prevent transaction conflicts
+    dnf5 clean all && \
+    # Remove conflicting NetworkManager packages that cause sysusers conflicts
+    dnf5 -y remove --noautoremove \
+        NetworkManager-openvpn \
+        NetworkManager-openvpn-gnome \
+        openvpn || true && \
+    # Remove any conflicting sysusers files manually
+    rm -f /usr/lib/sysusers.d/nm-openvpn-sysusers.conf /usr/lib/sysusers.d/openvpn.conf || true && \
+    # Unset skip_if_unavailable to catch errors
     dnf5 config-manager unsetopt skip_if_unavailable && \
     # Remove conflicting packages
-    dnf5 -y remove \
+    dnf5 -y remove --noautoremove \
         nvidia-gpu-firmware \
         rocm-hip \
         rocm-opencl \
         rocm-clinfo \
         rocm-smi || true && \
-    # Install Wayland dependencies for Nvidia
+    # Enable staging repo for egl-wayland
     dnf5 -y copr enable ublue-os/staging && \
-    dnf5 -y install \
+    # Install Wayland dependencies for Nvidia with allowerasing to resolve conflicts
+    dnf5 -y install --allowerasing \
         egl-wayland.x86_64 \
         egl-wayland2.x86_64 && \
     # Install NVIDIA drivers
@@ -201,6 +212,7 @@ RUN --mount=type=cache,dst=/var/cache \
     rm -f /usr/share/vulkan/icd.d/nouveau_icd.*.json && \
     # Create symlink for nvidia-ml
     ln -sf libnvidia-ml.so.1 /usr/lib64/libnvidia-ml.so && \
+    # Disable staging repo
     dnf5 -y copr disable ublue-os/staging && \
     /ctx/cleanup
 
@@ -211,7 +223,7 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=tmpfs,dst=/tmp \
     --mount=type=secret,id=GITHUB_TOKEN \
     # Remove unneeded packages
-    dnf5 -y remove \
+    dnf5 -y remove --noautoremove \
         ublue-os-update-services \
         toolbox \
         htop \
