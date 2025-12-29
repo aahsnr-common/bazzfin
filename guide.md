@@ -142,6 +142,6 @@ sudo mkdir -p /etc/pki/containers
 sudo cp path/to/cosign.pub /etc/pki/containers/bazzfin.pub
 
 # 2. Rebase (Use your actual GitHub username)
-rpm-ostree rebase ostree-image-signed:docker://ghcr.io/YOUR_USERNAME/bazzfin:latest
+rpm-ostree rebase ostree-image-signed:docker://ghcr.io/aahsnr-common/bazzfin:latest
 
 ```
