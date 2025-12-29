@@ -177,7 +177,6 @@ RUN --mount=type=cache,dst=/var/cache \
     rm -f /usr/lib/sysusers.d/nm-openvpn-sysusers.conf \
           /usr/lib/sysusers.d/openvpn.conf || true && \
     echo "=== Step 1: Removed conflicting NetworkManager packages ===" && \
-    dnf5 config-manager unsetopt skip_if_unavailable && \
     dnf5 -y remove --noautoremove \
         nvidia-gpu-firmware \
         rocm-hip \
