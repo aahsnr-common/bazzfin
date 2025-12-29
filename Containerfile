@@ -56,7 +56,6 @@ RUN --mount=type=cache,dst=/var/cache \
     done && \
     unset -v copr && \
     dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release{,-extras,-mesa} && \
-    dnf5 -y config-manager addrepo --overwrite --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo && \
     dnf5 -y install \
         https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
         https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm && \
@@ -271,6 +270,9 @@ RUN --mount=type=cache,dst=/var/cache \
         uupd \
         ds-inhibit \
         nautilus-gsconnect \
+        steamdeck-backgrounds \
+        steamdeck-gnome-presets \
+        gnome-randr-rust \
         gnome-shell-extension-user-theme \
         gnome-shell-extension-gsconnect \
         gnome-tweaks \
@@ -284,6 +286,7 @@ RUN --mount=type=cache,dst=/var/cache \
     if [ -f /usr/lib/systemd/system/uupd.service ]; then \
         sed -i 's|uupd|& --disable-module-distrobox|' /usr/lib/systemd/system/uupd.service; \
     fi && \
+    /ctx/build-gnome-extensions && \
     systemctl enable dconf-update.service || true && \
     /ctx/cleanup
 
@@ -321,7 +324,7 @@ RUN --mount=type=cache,dst=/var/cache \
     glib-compile-schemas --strict /tmp/bazzite-schema-test && \
     glib-compile-schemas /usr/share/glib-2.0/schemas &>/dev/null || true && \
     rm -rf /tmp/bazzite-schema-test && \
-    for repo in fedora-cisco-openh264 fedora-steam fedora-rar google-chrome tailscale _copr_ublue-os-akmods terra terra-extras negativo17-fedora-multimedia; do \
+    for repo in fedora-cisco-openh264 fedora-steam fedora-rar google-chrome _copr_ublue-os-akmods terra terra-extras negativo17-fedora-multimedia; do \
         if [ -f "/etc/yum.repos.d/$repo.repo" ]; then \
             sed -i 's@enabled=1@enabled=0@g' "/etc/yum.repos.d/$repo.repo"; \
         fi; \
@@ -340,17 +343,14 @@ RUN --mount=type=cache,dst=/var/cache \
         sed -i 's/balanced=balanced$/balanced=balanced-bazzite/' /etc/tuned/ppd.conf && \
         sed -i 's/performance=throughput-performance$/performance=throughput-performance-bazzite/' /etc/tuned/ppd.conf; \
     fi && \
-    systemctl disable fw-fanctrl.service || true && \
     systemctl disable scx_loader.service || true && \
     systemctl enable input-remapper.service || true && \
     systemctl disable rpm-ostreed-automatic.timer || true && \
     systemctl enable uupd.timer || true && \
     systemctl enable incus-workaround.service || true && \
     systemctl enable bazzite-hardware-setup.service || true && \
-    systemctl disable tailscaled.service || true && \
     systemctl enable ds-inhibit.service || true && \
     systemctl --global enable bazzite-user-setup.service || true && \
-    systemctl --global disable sunshine.service || true && \
     systemctl enable greenboot-healthcheck.service || true && \
     systemctl disable supergfxd.service || true && \
     dnf5 config-manager setopt skip_if_unavailable=1 && \
