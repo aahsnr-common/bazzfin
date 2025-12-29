@@ -12,32 +12,34 @@ else
     curl -Lo /etc/yum.repos.d/_copr_ublue-os-staging.repo https://copr.fedorainfracloud.org/coprs/ublue-os/staging/repo/fedora-"${FRELEASE}"/ublue-os-staging-fedora-"${FRELEASE}".repo
 fi
 
-if [[ "${BASE_IMAGE_NAME}" == "silverblue" ]]; then
+if [[ "${BASE_IMAGE_NAME}" == "kinoite" ]]; then
+    VARIANT_PKGS="supergfxctl-plasmoid supergfxctl"
+elif [[ "${BASE_IMAGE_NAME}" == "silverblue" ]]; then
     VARIANT_PKGS="gnome-shell-extension-supergfxctl-gex supergfxctl"
 else
     VARIANT_PKGS=""
 fi
 
-dnf5 install -y \
-    --best \
-    --allowerasing \
-    --skip-broken \
-    --nogpgcheck \
-    /rpms/nvidia/libnvidia-cfg-* \
-    /rpms/nvidia/libnvidia-fbc-* \
-    /rpms/nvidia/libnvidia-gpucomp-* \
-    /rpms/nvidia/libnvidia-ml-* \
-    /rpms/nvidia/nvidia-libXNVCtrl-5* \
-    /rpms/nvidia/nvidia-settings-5* \
-    /rpms/nvidia/nvidia-driver-* \
-    /rpms/nvidia/nvidia-kmod-common-* \
-    /rpms/nvidia/nvidia-modprobe-5* \
-    /rpms/nvidia/nvidia-persistenced-5* \
-    /rpms/nvidia/xorg-x11* \
-    /rpms/nvidia/nvidia-container-toolkit-1* \
-    /rpms/nvidia/nvidia-container-toolkit-base-1* \
-    /rpms/nvidia/libnvidia-container1-1* \
-    /rpms/nvidia/libnvidia-container-tools-1* \
+# Install NVIDIA driver RPMs using rpm directly to bypass dnf5/rpm6 digest issues
+rpm -Uvh --nodeps --nodigest --replacepkgs \
+    /rpms/nvidia/libnvidia-cfg-*.rpm \
+    /rpms/nvidia/libnvidia-fbc-*.rpm \
+    /rpms/nvidia/libnvidia-gpucomp-*.rpm \
+    /rpms/nvidia/libnvidia-ml-*.rpm \
+    /rpms/nvidia/nvidia-libXNVCtrl-5*.rpm \
+    /rpms/nvidia/nvidia-settings-5*.rpm \
+    /rpms/nvidia/nvidia-driver-*.rpm \
+    /rpms/nvidia/nvidia-kmod-common-*.rpm \
+    /rpms/nvidia/nvidia-modprobe-5*.rpm \
+    /rpms/nvidia/nvidia-persistenced-5*.rpm \
+    /rpms/nvidia/xorg-x11*.rpm \
+    /rpms/nvidia/nvidia-container-toolkit-1*.rpm \
+    /rpms/nvidia/nvidia-container-toolkit-base-1*.rpm \
+    /rpms/nvidia/libnvidia-container1-1*.rpm \
+    /rpms/nvidia/libnvidia-container-tools-1*.rpm
+
+# Install dependencies and variant packages from repos
+dnf5 install -y --best --allowerasing \
     libva-nvidia-driver \
     ${VARIANT_PKGS}
 
