@@ -1,3 +1,18 @@
+This guide assumes you have forked `ublue-os/bazzite`, replaced the `Containerfile` with your custom version, and that Fedora 43 images and packages exist (as requested).
+
+### **1. Repository Structure Verification**
+
+Your `Containerfile` relies on specific directories to build correctly. Since you have forked the repository, these should already be present, but you must verify them.
+
+- **`build_files/`**: Contains helper scripts like `/ctx/cleanup` and `/ctx/install-kernel`. Ensure this directory is in your repository root.
+- **`system_files/`**: Contains the desktop and Nvidia configuration files referenced in Stage 2 of your `Containerfile`.
+- **`firmware/`**: Your `Containerfile` executes `COPY firmware /`. Ensure a `firmware` folder exists in the root, even if it is empty, to prevent build failures.
+
+### **2. The Workflow File**
+
+Delete any existing workflows in `.github/workflows/` and create a new file named `.github/workflows/build.yml` with the following content. This workflow is tailored to your single-image build.
+
+```yaml
 name: Build Custom Bazzite
 on:
   push:
@@ -95,3 +110,38 @@ jobs:
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           COSIGN_EXPERIMENTAL: false
+```
+
+### **3. Variables You Need to Change**
+
+#### **A. In `build.yml` (Environment Variables)**
+
+- **`IMAGE_NAME`**: Set to `bazzfin` to match your `Containerfile` default. If you change this, your final image URL will change (e.g., `ghcr.io/youruser/newname`).
+- **`FEDORA_VERSION`**: Set to `43`. This controls which upstream Bazzite kernel and base image are pulled.
+- **`BASE_IMAGE_NAME`** (in `build-args`): Set to `kinoite` (for KDE) or `silverblue` (for GNOME). Your `Containerfile` defaults to `kinoite`, but your comments mention "Silverblue... Desktop Shared". Ensure this matches your desired desktop environment.
+
+#### **B. In GitHub Repository Settings (Secrets)**
+
+You **must** add a signing key for the build to succeed.
+
+1. **Generate Key:** Run `cosign generate-key-pair` on your local machine.
+2. **Add Secret:** Go to **Settings > Secrets and variables > Actions** in your GitHub repository.
+3. **New Secret:** Create a secret named **`SIGNING_SECRET`** and paste the content of `cosign.key` (the private key).
+
+### **4. Required Files to Add/Commit**
+
+- **`cosign.pub`**: You must commit your public key to the root of the repository. This allows users (and you) to verify the image before rebasing.
+
+### **5. Next Step: Rebasing to Your Image**
+
+Once the GitHub Action completes successfully, rebase your system to the new image:
+
+```bash
+# 1. Authorize your signing key
+sudo mkdir -p /etc/pki/containers
+sudo cp path/to/cosign.pub /etc/pki/containers/bazzfin.pub
+
+# 2. Rebase (Use your actual GitHub username)
+rpm-ostree rebase ostree-image-signed:docker://ghcr.io/YOUR_USERNAME/bazzfin:latest
+
+```
